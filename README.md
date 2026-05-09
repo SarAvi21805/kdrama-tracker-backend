@@ -15,6 +15,9 @@ Este es el backend del proyecto Full Stack, encargado de gestionar la lógica de
 - `PUT /series/{id}`: Editar una serie existente.
 - `DELETE /series/{id}`: Eliminar una serie.
 
+## 📸 Captura de Pantalla
+![alt text](img/pagina1.png)
+
 ## 🔐 Configuración de CORS
 **¿Qué es CORS?** Cross-Origin Resource Sharing es una política de seguridad del navegador que bloquea peticiones entre distintos dominios. 
 **Configuración:** En este proyecto, configuramos los headers de respuesta para permitir peticiones desde cualquier origen (`*`) y habilitar los métodos GET, POST, PUT y DELETE, permitiendo así que el frontend pueda consumir los datos sin bloqueos.
