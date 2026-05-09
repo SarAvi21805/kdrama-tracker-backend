@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/SarAvi21805/kdrama-tracker-backend/database"
 	"github.com/SarAvi21805/kdrama-tracker-backend/handlers"
@@ -39,4 +40,13 @@ func main() {
 
 	fmt.Println("Servidor corriendo en http://localhost:8080 ✨🌸")
 	http.ListenAndServe(":8080", r)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Printf("Servidor mágico corriendo en el puerto %s ✨🌸\n", port)
+
+	http.ListenAndServe(":"+port, r)
 }
