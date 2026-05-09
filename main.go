@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/SarAvi21805/kdrama-tracker-backend/database"
 	"github.com/SarAvi21805/kdrama-tracker-backend/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -11,6 +12,9 @@ import (
 )
 
 func main() {
+	database.InitDB()
+	fmt.Println("Base de datos SQLite lista 🗄️")
+
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -28,7 +32,11 @@ func main() {
 
 	// RUTAS
 	r.Get("/series", handlers.GetSeries)
+	r.Get("/series/{id}", handlers.GetSerieByID)
+	r.Post("/series", handlers.CreateSerie)
+	r.Put("/series/{id}", handlers.UpdateSerie)
+	r.Delete("/series/{id}", handlers.DeleteSerie)
 
-	fmt.Println("Servidor mágico corriendo en http://localhost:8080 ✨🌸")
+	fmt.Println("Servidor corriendo en http://localhost:8080 ✨🌸")
 	http.ListenAndServe(":8080", r)
 }

@@ -4,45 +4,108 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/SarAvi21805/kdrama-tracker-backend/database"
 	"github.com/SarAvi21805/kdrama-tracker-backend/models"
+	"github.com/go-chi/chi/v5"
 )
 
-// Base de datos temporal
-var series = []models.Serie{
-	{
-		ID:          1,
-		Title:       "Guardian: The Lonely God 🌸",
-		Genre:       "Fantasía / Romance",
-		Category:    "K-Drama",
-		Description: "Un ser inmortal busca a su novia humana.",
-		ImageURL:    "https://is3-ssl.mzstatic.com/image/thumb/EnV6baw9ITh_lCEHrhACfg/1200x675.jpg",
-		Rating:      5,
-		IsFavorite:  false,
-	},
-	{
-		ID:          2,
-		Title:       "Demon Slayer",
-		Genre:       "Acción",
-		Category:    "Anime",
-		Description: "Tanjiro busca curar a su hermana convertida en demonio.",
-		ImageURL:    "https://tse4.mm.bing.net/th/id/OIP.rGPe8LN9nbqGwBlmOkDLbQHaEK?w=1200&h=675&rs=1&pid=ImgDetMain&o=7&rm=3",
-		Rating:      5,
-		IsFavorite:  false,
-	},
-	{
-		ID:          3,
-		Title:       "Spy x Family",
-		Genre:       "Comedia/Acción",
-		Category:    "Anime",
-		Description: "Un espía, una asesina y una telépata forman una familia falsa.",
-		ImageURL:    "https://tse1.mm.bing.net/th/id/OIP.2ZPe0nk9BPmWXdVDvAg8DQHaD5?w=1000&h=526&rs=1&pid=ImgDetMain&o=7&rm=3",
-		Rating:      5,
-		IsFavorite:  false,
-	},
-}
-
-// Responde con la lista de las series en formato JSON
+// Obtener series
 func GetSeries(w http.ResponseWriter, r *http.Request) {
+	// Consulta a la DB
+	rows, err := database.DB.Query("SELECT id, title, genre, category, description, image_url, rating, is_favorite FROM series")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	series := []models.Serie{}
+	for rows.Next() {
+		var s models.Serie
+		err := rows.Scan(&s.ID, &s.Title, &s.Genre, &s.Category, &s.Description, &s.ImageURL, &s.Rating, &s.IsFavorite)
+		if err != nil {
+			continue
+		}
+		series = append(series, s)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(series)
+}
+
+// Obtener una sola serie
+func GetSerieByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var s models.Serie
+
+	err := database.DB.QueryRow("SELECT id, title, genre, category, description, image_url, rating, is_favorite FROM series WHERE id = ?", id).
+		Scan(&s.ID, &s.Title, &s.Genre, &s.Category, &s.Description, &s.ImageURL, &s.Rating, &s.IsFavorite)
+
+	if err != nil {
+		http.Error(w, "Serie no encontrada 🌸", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s)
+}
+
+// Eliminar serie
+func DeleteSerie(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id") // Obtiene el ID de la URL
+
+	query := `DELETE FROM series WHERE id = ?`
+	_, err := database.DB.Exec(query, id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Editar serie
+func UpdateSerie(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var s models.Serie
+	json.NewDecoder(r.Body).Decode(&s)
+
+	query := `UPDATE series SET title=?, genre=?, category=?, description=?, image_url=?, rating=?, is_favorite=? WHERE id=?`
+	_, err := database.DB.Exec(query, s.Title, s.Genre, s.Category, s.Description, s.ImageURL, s.Rating, s.IsFavorite, id)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(s)
+}
+
+// Recibe un JSON y lo inserta en la base de datos
+func CreateSerie(w http.ResponseWriter, r *http.Request) {
+	var s models.Serie
+	// Decodifica el JSON que viene del Frontend
+	err := json.NewDecoder(r.Body).Decode(&s)
+	if err != nil {
+		http.Error(w, "Datos inválidos 🌸", http.StatusBadRequest)
+		return
+	}
+
+	// Insertar en la BD
+	query := `INSERT INTO series (title, genre, category, description, image_url, rating, is_favorite) 
+              VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	result, err := database.DB.Exec(query, s.Title, s.Genre, s.Category, s.Description, s.ImageURL, s.Rating, s.IsFavorite)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Obtener ID generado y responder
+	id, _ := result.LastInsertId()
+	s.ID = int(id)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated) // 201
+	json.NewEncoder(w).Encode(s)
 }
